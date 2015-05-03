@@ -2,7 +2,9 @@ package edu.ncsu.spiderz;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -22,6 +24,7 @@ import backtype.storm.LocalDRPC;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
+import backtype.storm.utils.Utils;
 
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
@@ -30,46 +33,35 @@ import com.google.gson.JsonParser;
 
 public class WikiCrawlerTopology {
 
-	public static StormTopology buildTopology(LocalDRPC drpc) {
+	public static StormTopology buildTopology() {
 		// topology to build
 		TopologyBuilder topology = new TopologyBuilder();
-		
+
 		// create a spout
-		WikiCrawlerSpout wikiCrawler = new WikiCrawlerSpout();
-		
-		// set up the DAG
-		topology.setSpout("titles", wikiCrawler);
-		
+		WikiCrawlerSpout wikiSpout = new WikiCrawlerSpout();
+
+		// create a bolt
+		WikiCrawlerExplorerBolt wikiBolt = new WikiCrawlerExplorerBolt();
+
+		// set up the DAG TODO
+		topology.setSpout("wikiSpout", wikiSpout);
+		topology.setBolt("wikiBolt", wikiBolt).shuffleGrouping("wikiSpout");
+
+		// TODO
+
 		return topology.createTopology();
 	}
-	
-	public static void main(String args[]) throws Exception{
-		// configure the topolgy
+
+	public static void main(String args[]) throws Exception {
+		// configure the topology
 		Config conf = new Config();
-    	conf.setDebug(false);
-    	conf.setMaxSpoutPending(10);
+		conf.setDebug(false);
+		conf.setMaxSpoutPending(5);
 
-    	// configure a local cluster and submit
-    	LocalCluster cluster = new LocalCluster();
-    	LocalDRPC drpc = new LocalDRPC();
-    	cluster.submitTopology("crawler", conf, buildTopology(drpc));
-    	
-    	// wait to crawl enough topics
-    	Thread.sleep(10000);
+		LocalCluster cluster = new LocalCluster();
+		StormTopology topology = buildTopology();
+		cluster.submitTopology("crawler", conf, topology);
 
-    	// make drpc queries in a loop
-    	for (int i = 0; i < 20; i++) {        		
-        		// get the list of top k words with their counts
-        		System.out.println("TOP K TOPICS : "+ drpc.execute("get_top_k", "whatever"));
-        		
-        		// wait for some time before querying again
-        		Thread.sleep(5000);
-    	}
-   	
-		System.out.println("STATUS: OK");
-		
-		// shutdown and terminate
-		cluster.shutdown();
-        drpc.shutdown();
+		System.out.println("\n\n>>>> TOPOLUGY - STATUS OK\n\n");
 	}
 }
