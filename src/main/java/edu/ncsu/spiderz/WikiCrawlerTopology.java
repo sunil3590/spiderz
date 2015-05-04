@@ -34,7 +34,7 @@ import com.google.gson.JsonParser;
 public class WikiCrawlerTopology {
 
 	private static int numWorkers = 1; // how many machines do we have?
-	private static int numCores = 2; // how many cores on each machine TODO
+	private static int numCores = 2; // how many cores on each machine
 	public static StormTopology buildTopology() {
 		// topology to build
 		TopologyBuilder topology = new TopologyBuilder();

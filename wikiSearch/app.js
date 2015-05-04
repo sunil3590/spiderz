@@ -40,62 +40,112 @@ function onDisconnect(socket) {
 }
 
 function search(data) {
-	var interest = data.interest;
+	var interestAND = data.interestAND;
+	var interestOR = data.interestOR;
 	var ignore = data.ignore;
 
-	interest = interest.split(" ");
-	ignore = ignore.split(" ");
+	if(interestAND.length != 0)
+		interestAND = interestAND.split(" ");
+	if(interestOR.length != 0)
+		interestOR = interestOR.split(" ");
+	if(ignore.length != 0)
+		ignore = ignore.split(" ");
+
+	console.log("\ninterestAND : " + interestAND);
+	console.log("interestOR : " + interestOR);
+	console.log("ignore : " + ignore + "\n");
 
 	// start a multi command execution
 	var multi = redisClient.multi();
 
 	// delete any old results
-	multi.del("QUERY_result");
+	multi.del("QUERY_AND_RESULT");
+	multi.del("QUERY_OR_RESULT");
+	multi.del("QUERY_RESULT");
 
-	// union all the interest keywords
-	for(var i = 0; i < interest.length; i++) {
-		multi.sunionstore("QUERY_result", "QUERY_result", "RII_" + interest[i]);
+	// union all the OR interest keywords
+	for(var i = 0; i < interestOR.length; i++) {
+		multi.sunionstore("QUERY_OR_RESULT", "QUERY_OR_RESULT", "RII_" + interestOR[i]);
+	}
+
+	// intersect all the AND interest keywords
+	for(i = 0; i < interestAND.length; i++) {
+		if(i == 0)
+			multi.sunionstore("QUERY_AND_RESULT", "QUERY_AND_RESULT", "RII_" + interestAND[i]);
+		else
+			multi.sinterstore("QUERY_AND_RESULT", "QUERY_AND_RESULT", "RII_" + interestAND[i]);
+	}
+
+	if(interestAND.length == 0 || interestOR.length == 0 ) {
+		// union the AND and OR terms
+		multi.sunionstore("QUERY_RESULT", "QUERY_AND_RESULT", "QUERY_OR_RESULT");
+	} else {
+		// intersect the AND and OR terms
+		multi.sinterstore("QUERY_RESULT", "QUERY_AND_RESULT", "QUERY_OR_RESULT");
 	}
 
 	// remove all the ignore keywords
 	for(i = 0; i < ignore.length; i++) {
-		multi.sdiffstore("QUERY_result", "QUERY_result", "RII_" + ignore[i]);
+		multi.sdiffstore("QUERY_RESULT", "QUERY_RESULT", "RII_" + ignore[i]);
 	}
 
 	// get the query results
-	multi.smembers("QUERY_result");
+	multi.smembers("QUERY_RESULT");
 
 	// delete any old results
-	multi.del("QUERY_result");
+	multi.del("QUERY_AND_RESULT");
+	multi.del("QUERY_OR_RESULT");
+	multi.del("QUERY_RESULT");
+
+	// start a multi command execution
+	var multiScore = redisClient.multi();
 
 	// execute the multistep execution
 	multi.exec(function(err1, replies) {
-		var results = replies[interest.length + ignore.length + 1];
+		var offset = interestAND.length + interestOR.length + ignore.length + 4;
+		var results = replies[offset];
 
 		// sort and send the results
-		var resultsObjs = [];
+		var resultObjs = [];
 
 		// emit the count of results obtained
 		socket.emit('count', {count : results.length});
 
 		// build result objects
-		results.forEach(function (reply, index) {
-			var wikiTitle = reply.toString();
+		for(i = 0; i < results.length; i++) {
+			var wikiTitle = results[i].toString();
+			var min = 9007199254740992; // max value of int in javascript
 
-			redisClient.hget("RCM_" + wikiTitle, "count", function(err2, count) {
-				resultsObjs.push({score : count, title : wikiTitle});
+			for(var j = 0; j < 8; j++) {
+				var key = getKey(wikiTitle, j);
+				multiScore.hget(key, "count")
+			}
+		}
 
-				if(index == results.length - 1) {
-					// sort result objects
-					resultsObjs.sort(function(a, b) {
-						return b.score - a.score;
-					});
-
-					// emit each result title
-					resultsObjs.forEach(function (obj, index) {
-						socket.emit('result', {score : obj.score, title : obj.title});
-					});
+		multiScore.exec(function(err2, resultScores) {
+			for(var k = 0; k < results.length; k++) {
+				// handle in batches of 8
+				for(var row = 0; row < 8; row++) {
+					// find min
+					var sc = parseInt(resultScores[8*k + row])
+					if(sc < min)
+						min = sc;
 				}
+
+				// push to list
+				var wikiTitle = results[k].toString();
+				resultObjs.push({score : min, title : wikiTitle});
+			}
+
+			// sort list
+			resultObjs.sort(function(a, b) {
+				return b.score - a.score;
+			});
+
+			// for each sorted list
+			resultObjs.forEach(function (obj, index) {
+				// emit min score and title
+				socket.emit('result', {score : obj.score, title : obj.title});
 			});
 		});
 	});
@@ -109,6 +159,72 @@ function redisOnConnnect() {
 function redisOnError() {
     console.log('error in redis');
 }
+
+// this is a hack. server and client both need to follow 
+// same seed and size of count min sketch
+
+// hash the title and return key to query redis count min
+function getKey(title, row) {
+	// seeds to build keys for titls
+	var seed = [4962, 274836, 7527385, 321459, 9864761, 649, 176924826,
+	57549862];
+
+	var size = 1024 * 1024 * 32;
+
+	var hash = murmur2mod(title, seed[row]) % size;
+
+	var key = "RCM_" + row.toString() + "_" + hash.toString();
+
+	//console.log(title + " - " + key);
+
+	return key;
+}
+
+// https://github.com/perezd/node-murmurhash/blob/master/murmurhash.js
+function murmur2mod(str, seed) {
+    var
+      l = str.length,
+      h = seed ^ l,
+      i = 0,
+      k;
+
+    var mul = 1;
+
+    while (l >= 4) {
+		k =
+			((str.charCodeAt(i) & 0xff)) |
+			((str.charCodeAt(++i) & 0xff) << 8) |
+			((str.charCodeAt(++i) & 0xff) << 16) |
+			((str.charCodeAt(++i) & 0xff) << 24);
+
+		k = (((k & 0xffff) * mul) + ((((k >>> 16) * mul) & 0xffff) << 16));
+		k ^= k >>> 24;
+		k = (((k & 0xffff) * mul) + ((((k >>> 16) * mul) & 0xffff) << 16));
+
+		h = (((h & 0xffff) * mul) + ((((h >>> 16) * mul) & 0xffff) << 16)) ^ k;
+
+		l -= 4;
+		++i;
+    }
+
+	switch (l) {
+		case 3: h ^= (str.charCodeAt(i + 2) & 0xff) << 16;
+		case 2: h ^= (str.charCodeAt(i + 1) & 0xff) << 8;
+		case 1: h ^= (str.charCodeAt(i) & 0xff);
+		        h = (((h & 0xffff) * mul) + ((((h >>> 16) * mul) & 0xffff) << 16));
+	}
+
+	h ^= h >>> 13;
+	h = (((h & 0xffff) * mul) + ((((h >>> 16) * mul) & 0xffff) << 16));
+	h ^= h >>> 15;
+	
+	h = h >>> 0;
+
+	// take only 31 bits. this is what the server does
+	h31 = h & 0x7fffffff;
+	
+	return h31;
+  };
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));

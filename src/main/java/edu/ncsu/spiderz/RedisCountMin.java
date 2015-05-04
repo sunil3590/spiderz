@@ -16,79 +16,63 @@ public class RedisCountMin {
 	int[] seed = { 4962, 274836, 7527385, 321459, 9864761, 649, 176924826,
 			57549862 };
 
-	// https://github.com/addthis/stream-lib/blob/master/src/
-	// main/java/com/clearspring/analytics/hash/MurmurHash.java
-	private static long simpleHash(String key, int seed) {
-		int m = 0x5bd1e995;
-		int r = 24;
+	// ported Javascript from - https://github.com/perezd/node-murmurhash/
+	// blob/master/murmurhash.js
+	private static int murmur2mod(String str, int seed) {
+		char[] data = str.toCharArray();
+		int l = str.length();
+		long h = seed ^ l;
+		int i = 0;
+		long k = 0;
+		
+		int mul = 1;
+		
+		while (l >= 4) {
+			k = ((data[i] & 0xff)) | 
+					((data[++i] & 0xff) << 8) | 
+					((data[++i] & 0xff) << 16) | 
+					((data[++i] & 0xff) << 24);
 
-		byte[] data = key.getBytes();
-		int length = data.length;
+			k = (((k & 0xffff) * mul) + ((((k >>> 16) * mul) & 0xffff) << 16));
+			k ^= k >>> 24;
+			k = (((k & 0xffff) * mul) + ((((k >>> 16) * mul) & 0xffff) << 16));
 
-		int h = seed ^ length;
+			h = (((h & 0xffff) * mul) + ((((h >>> 16) * mul) & 0xffff) << 16))
+					^ k;
 
-		int len_4 = length >> 2;
-
-		for (int i = 0; i < len_4; i++) {
-			int i_4 = i << 2;
-			int k = data[i_4 + 3];
-			k = k << 8;
-			k = k | (data[i_4 + 2] & 0xff);
-			k = k << 8;
-			k = k | (data[i_4 + 1] & 0xff);
-			k = k << 8;
-			k = k | (data[i_4 + 0] & 0xff);
-			k *= m;
-			k ^= k >>> r;
-			k *= m;
-			h *= m;
-			h ^= k;
+			l -= 4;
+			++i;
 		}
 
-		// avoid calculating modulo
-		int len_m = len_4 << 2;
-		int left = length - len_m;
-
-		if (left != 0) {
-			if (left >= 3) {
-				h ^= (int) data[length - 3] << 16;
-			}
-			if (left >= 2) {
-				h ^= (int) data[length - 2] << 8;
-			}
-			if (left >= 1) {
-				h ^= (int) data[length - 1];
-			}
-
-			h *= m;
+		switch (l) {
+		case 3:
+			h ^= (data[i + 2] & 0xff) << 16;
+		case 2:
+			h ^= (data[i + 1] & 0xff) << 8;
+		case 1:
+			h ^= (data[i] & 0xff);
+			h = (((h & 0xffff) * mul) + ((((h >>> 16) * mul) & 0xffff) << 16));
 		}
-
+		
 		h ^= h >>> 13;
-		h *= m;
+		h = (((h & 0xffff) * mul) + ((((h >>> 16) * mul) & 0xffff) << 16));
 		h ^= h >>> 15;
-
-		return getUnsignedInt(h);
-	}
-
-	// http://stackoverflow.com/questions/9578639/
-	// best-way-to-convert-a-signed-integer-to-an-unsigned-long
-	private static final int BITS_PER_BYTE = 8;
-
-	private static long getUnsignedInt(int x) {
-		ByteBuffer buf = ByteBuffer.allocate(Long.SIZE / BITS_PER_BYTE);
-		buf.putInt(Integer.SIZE / BITS_PER_BYTE, x);
-		return buf.getLong(0);
-	}
+		
+		h = h >>> 0;
+		
+		// leave out the signed bit
+		int h31 = (int)h & 0x7fffffff;
+		
+		return h31;
+}
 
 	private String getRedisCountMinKey(String key, int row) {
-		long idx = simpleHash(key, seed[row]) % width;
+		int idx = murmur2mod(key, seed[row]) % width;
 
 		// compute the redis key
 		String cmKey = keyPrefix + Integer.toString(row) + "_"
-				+ Long.toString(idx);
-
-		cmKey = keyPrefix + key; //TODO
-				
+				+ Integer.toString(idx);
+		
 		return cmKey;
 	}
 
@@ -126,20 +110,17 @@ public class RedisCountMin {
 		}
 	}
 
-	public RedisCountMin(String ipPort, int width, int height) throws Exception {
-		if (height > 8 || height < 1 || width < 1)
-			throw new Exception("Invalid arguments");
-
+	public RedisCountMin(String ipPort) throws Exception {
 		jedis = new Jedis(ipPort);
 
-		this.width = width;
-		this.height = height;
+		this.width = 1024 * 1024 * 32;
+		this.height = 8;
 	}
 
 	public RedisCountMin() {
 		jedis = new Jedis("localhost");
 
-		this.width = 2048;
-		this.height = 1;//TODO
+		this.width = 1024 * 1024 * 32;
+		this.height = 8;
 	}
 }

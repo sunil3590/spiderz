@@ -12,7 +12,8 @@ socket.on('count', handleCount);
 
 // function to handle search query request
 function handleSearch(e) {
-	var _interest = $('#interest').val().toLowerCase();
+	var _interestAND = $('#interestAND').val().toLowerCase();
+	var _interestOR = $('#interestOR').val().toLowerCase();
 	var _ignore = $('#ignore').val().toLowerCase();
 
 	// remove all previous search results
@@ -22,7 +23,7 @@ function handleSearch(e) {
 	count.empty();
 
 	// send new query to server
-	socket.emit('query', {interest: _interest, ignore: _ignore});
+	socket.emit('query', {interestAND: _interestAND, interestOR : _interestOR, ignore: _ignore});
 }
 
 // function to handle search result

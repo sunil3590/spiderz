@@ -224,7 +224,9 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 				// add title to redis queue of unexplored titles
 				jedis.rpush(queueId, title);
 				
-				// add title to inverted index
+				// replace special characters with space
+				title.replaceAll("[$&+,:;=?@#|'<>.^*()%!-]", " ");
+				
 				// tokenize the title and remove stop words
 				StringTokenizer tokenizer = new StringTokenizer(title, " ");
 				while(tokenizer.hasMoreTokens()) {
