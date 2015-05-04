@@ -61,15 +61,15 @@ public class WikiCrawlerSpout implements IRichSpout {
 			try {
 				Thread.sleep(5);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
 			// notify if queue has been empty for some time
 			noInputCounter++;
 			if (noInputCounter > 2000) {
-				System.out.println("\n\n>>>> SPOUT - No title in redis "
-						+ "queue from quite some time!\n\n");
+				System.out.println("\n>>>> SPOUT - No title in redis "
+						+ "queue from quite some time! May be you haven't " +
+						"added a starting title to crawl from\n");
 				noInputCounter = 0;
 			}
 
@@ -89,6 +89,15 @@ public class WikiCrawlerSpout implements IRichSpout {
 		// connect to redis to access queue which 
 		// contains unexplored titles
 		jedis = new Jedis("localhost");
+		
+		// set the starting point to crawl if already not set
+		if(jedis.llen(queueId) == 0) {
+			// give a variety of links to start crawling from
+			jedis.rpush(queueId, "Computer science");
+			jedis.rpush(queueId, "Botany");
+			jedis.rpush(queueId, "Physics");
+			jedis.rpush(queueId, "Mathematics");
+		}
 	}
 
 	@Override

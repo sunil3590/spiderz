@@ -87,6 +87,8 @@ public class RedisCountMin {
 		String cmKey = keyPrefix + Integer.toString(row) + "_"
 				+ Long.toString(idx);
 
+		cmKey = keyPrefix + key; //TODO
+				
 		return cmKey;
 	}
 
@@ -138,6 +140,6 @@ public class RedisCountMin {
 		jedis = new Jedis("localhost");
 
 		this.width = 2048;
-		this.height = 8;
+		this.height = 1;//TODO
 	}
 }

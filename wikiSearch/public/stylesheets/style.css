@@ -1,0 +1,33 @@
+body {
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  background-color: #E0FAFF;
+  height: 100%;
+}
+
+/* http://www.w3schools.com/css/css_link.asp */
+/* unvisited link */
+a:link {
+    color: #000099;
+}
+
+/* visited link */
+a:visited {
+    color: #0055EE;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+ol {
+  height: 100%;
+  overflow: visible;
+}
+
+#wiki_link {
+  color: #0000AA;
+}
+
+#count {
+  text-decoration: blink;
+}

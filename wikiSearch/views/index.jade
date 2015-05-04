@@ -1,0 +1,32 @@
+extends layout
+
+block content
+  h1#title Wikipedia Search
+
+  div#instructions
+    ul
+      li Enter a space separated list of keywords that you are interested in
+      li You can also list the keywords that you are NOT interested in, again, space separated
+
+  hr
+
+  h3 Your query
+  table
+    tr
+      td Interested Keywords: 
+      td
+        input#interest(type='text')
+
+    tr
+      td Ignore Keywords: 
+      td
+        input#ignore(type='text')
+
+  button#search Search
+
+  hr
+
+  div
+    h3 Results (sorted scores)
+    p#count
+    ol#results

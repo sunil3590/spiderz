@@ -47,13 +47,21 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 	private List<String> titles;
 	
 	// hash of stop words to be eliminated
-	HashMap<String, Boolean> stopWords = new HashMap<String, Boolean>();
+	private HashMap<String, Boolean> stopWords = new HashMap<String, Boolean>();
 	
 	// count of number of incoming links
-	RedisCountMin linkCount;
+	private RedisCountMin linkCount;
 	
 	// connection to redis
-	Jedis jedis;
+	private Jedis jedis;
+	
+	// profiling
+	private int numWordsIndexed = 0;
+	private int numLinksSeen = 0;
+	private int numLinksExplored = 0;
+	
+	// object ID
+	private int id = 0;
 	
 	// get JSON from a string
 	private JsonElement getJson(String response) {
@@ -186,11 +194,11 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 				
 				br.close();
 			} catch(Exception e) {	
-				System.out.println("\n\n>>>> BOLT - Error in stop word file read" + e);
+				System.out.println("\n>>>> BOLT " + id + " - Error in stop word file read" + e);
 			}
 		}
 		
-		System.out.println("\n\n>>>> BOLT - Stop words list built\n\n");
+		System.out.println("\n>>>> BOLT " + id + " - Stop words list built\n");
 	}
 	
 	@Override
@@ -204,7 +212,7 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		String tupleTitle = tuple.getStringByField("title");
 		String token = null;
 		
-		System.out.println(">>>> " + tupleTitle);
+		System.out.println(">>>> BOLT " + id + " - Exploring " + tupleTitle);
 		
 		// explore the title
 		explore(tupleTitle);
@@ -223,12 +231,29 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 					token = tokenizer.nextToken();
 					token = token.toLowerCase();
 					
+					// eliminate braces around words
+					if(token.charAt(0) == '(') {
+						token = token.substring(1);
+					} else if(token.charAt(token.length()-1) == ')') {
+						token = token.substring(0, token.length()-1);
+					}
+					
 					// add reverse index entry to redis if not stop word
 					if(stopWords.containsKey(token)== false) {
 						// add prefix to the token to easily identify in redis
 						jedis.sadd(revIdxPrefix + token, title);
+						
+						numWordsIndexed++;
+						if(numWordsIndexed % 2000 == 0)
+							System.out.println(">>>> BOLT " + id + " - Indexed " + 
+									numWordsIndexed + " keywords");
 					}
 				}
+				
+				numLinksSeen++;
+				if(numLinksSeen % 1000 == 0)
+					System.out.println(">>>> BOLT " + id + " - Seen " + 
+							numLinksSeen + " titles");
 			}
 			
 			// increment count for title to reflect new incoming link
@@ -236,10 +261,18 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		}
 		
 		_outputCollector.ack(tuple);
+		
+		numLinksExplored++;
+		if(numLinksExplored % 5 == 0)
+			System.out.println(">>>> BOLT " + id + " - Explored " + 
+					numLinksExplored + " titles");
 	}
 
 	@Override
 	public void prepare(Map arg0, TopologyContext arg1, OutputCollector collector) {
+		// generate random id for object
+		id = (int) (Math.random() * 100000);
+		
 		// list that hold all the links in a topic that is being explored
 		titles = Lists.newArrayListWithExpectedSize(2000);
 		
@@ -255,7 +288,7 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		
 		_outputCollector = collector;
 		
-		System.out.println("\n\n>>>> BOLT - Prepared\n\n");
+		System.out.println("\n>>>> BOLT " + id + " - Prepared\n");
 	}
 
 	@Override

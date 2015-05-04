@@ -33,6 +33,8 @@ import com.google.gson.JsonParser;
 
 public class WikiCrawlerTopology {
 
+	private static int numWorkers = 1; // how many machines do we have?
+	private static int numCores = 2; // how many cores on each machine TODO
 	public static StormTopology buildTopology() {
 		// topology to build
 		TopologyBuilder topology = new TopologyBuilder();
@@ -43,11 +45,15 @@ public class WikiCrawlerTopology {
 		// create a bolt
 		WikiCrawlerExplorerBolt wikiBolt = new WikiCrawlerExplorerBolt();
 
-		// set up the DAG TODO
-		topology.setSpout("wikiSpout", wikiSpout);
-		topology.setBolt("wikiBolt", wikiBolt).shuffleGrouping("wikiSpout");
-
-		// TODO
+		// set up the DAG
+		// this spout always takes 1 task, it is light
+		topology.setSpout("wikiSpout", wikiSpout, 1)
+				.setNumTasks(2)
+				.setMaxSpoutPending(5);
+		// this bolt uses as many executors(threads) as the cores available
+		topology.setBolt("wikiBolt", wikiBolt, numCores)
+				.setNumTasks(numCores * 4) // 4 task per thread
+				.shuffleGrouping("wikiSpout");
 
 		return topology.createTopology();
 	}
@@ -56,12 +62,12 @@ public class WikiCrawlerTopology {
 		// configure the topology
 		Config conf = new Config();
 		conf.setDebug(false);
-		conf.setMaxSpoutPending(5);
+		conf.setNumWorkers(1); // running one a local machine
 
 		LocalCluster cluster = new LocalCluster();
 		StormTopology topology = buildTopology();
 		cluster.submitTopology("crawler", conf, topology);
 
-		System.out.println("\n\n>>>> TOPOLUGY - STATUS OK\n\n");
+		System.out.println("\n>>>> TOPOLUGY - STATUS OK\n");
 	}
 }
