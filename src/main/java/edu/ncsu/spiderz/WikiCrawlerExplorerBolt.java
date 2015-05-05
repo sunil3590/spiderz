@@ -173,9 +173,15 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 	// build the bloomfilter using the stopwords in the stop-words.txt file
 	public void buildStopWordList() {
 		
-		// folder which contains all stop words
-		URL resource = getClass().getClassLoader().getResource("stop-words");
-		File folder = new File(resource.getFile());
+		// folder which contains all stop words - generated during build
+		File folder = new File("stop-words");
+		
+		// if folder does not exist, notify and return
+		if(folder == null) {
+			System.out.println("\n>>>> BOLT " + id + " - Cound not find stop-words folder," +
+					"\"mvn clean install\"");
+			return;
+		}
 		
 		// get all files in the folder
 		File[] stopWordFiles = folder.listFiles();
