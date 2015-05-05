@@ -1,7 +1,7 @@
 # Spiderz
-### Distributed crawling of Wikipedia using Apache Storm
-### Store inverted index and link count(count-min sketch) in Redis
-### Handle search queries from web clients using Node.js
+#### * Distributed crawling of Wikipedia using Apache Storm
+#### * Store inverted index and link count(count-min sketch) in Redis
+#### * Handle search queries from web clients using Node.js
 (shhh, I know this is trivial)
 
 More details to come soon!
