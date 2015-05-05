@@ -174,7 +174,6 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 	public void buildStopWordList() {
 		
 		// folder which contains all stop words
-		//URL resource = getClass().getResource("/resources/data/stop-words");
 		URL resource = getClass().getClassLoader().getResource("stop-words");
 		File folder = new File(resource.getFile());
 		
