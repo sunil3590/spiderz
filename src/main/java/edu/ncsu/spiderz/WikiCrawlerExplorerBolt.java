@@ -224,26 +224,24 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		
 		// loop through all titles in title just explored
 		for (String title : titles) {
+			// copy of title
+			String copyTitle = new String(title);
+			
 			// if title not explored
 			if(linkCount.countMinGet(title) == 0) {
 				// add title to redis queue of unexplored titles
 				jedis.rpush(queueId, title);
 				
 				// replace special characters with space
-				title.replaceAll("[$&+,:;=?@#|'<>.^*()%!-]", " ");
+				copyTitle.replaceAll("[$&+,:;=?@#|'<>.^*()%!-]", " ");
 				
-				// tokenize the title and remove stop words
-				StringTokenizer tokenizer = new StringTokenizer(title, " ");
+				// take the title to lower case
+				copyTitle = copyTitle.toLowerCase();
+				
+				// tokenize the title and process each token
+				StringTokenizer tokenizer = new StringTokenizer(copyTitle, " ");
 				while(tokenizer.hasMoreTokens()) {
 					token = tokenizer.nextToken();
-					token = token.toLowerCase();
-					
-					// eliminate braces around words
-					if(token.charAt(0) == '(') {
-						token = token.substring(1);
-					} else if(token.charAt(token.length()-1) == ')') {
-						token = token.substring(0, token.length()-1);
-					}
 					
 					// add reverse index entry to redis if not stop word
 					if(stopWords.containsKey(token)== false) {
@@ -251,14 +249,14 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 						jedis.sadd(revIdxPrefix + token, title);
 						
 						numWordsIndexed++;
-						if(numWordsIndexed % 2000 == 0)
+						if(numWordsIndexed % 10000 == 0)
 							System.out.println(">>>> BOLT " + id + " - Indexed " + 
 									numWordsIndexed + " keywords");
 					}
 				}
 				
 				numLinksSeen++;
-				if(numLinksSeen % 1000 == 0)
+				if(numLinksSeen % 5000 == 0)
 					System.out.println(">>>> BOLT " + id + " - Seen " + 
 							numLinksSeen + " titles");
 			}
@@ -270,7 +268,7 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		_outputCollector.ack(tuple);
 		
 		numLinksExplored++;
-		if(numLinksExplored % 5 == 0)
+		if(numLinksExplored % 10 == 0)
 			System.out.println(">>>> BOLT " + id + " - Explored " + 
 					numLinksExplored + " titles");
 	}
