@@ -40,7 +40,8 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 	OutputCollector _outputCollector;
 	
 	private String queryStr = "http://en.wikipedia.org/w/api.php?format=json&";
-	private String revIdxPrefix = "RII_";
+	private String invIdxPrefix = "RII_";
+	private String linkCountPrefix = "RLC_";
 	private String queueId = "unexploredQueue";
 	
 	// list to hold titles linked from one page
@@ -48,9 +49,6 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 	
 	// hash of stop words to be eliminated
 	private HashMap<String, Boolean> stopWords = new HashMap<String, Boolean>();
-	
-	// count of number of incoming links
-	private RedisCountMin linkCount;
 	
 	// connection to redis
 	private Jedis jedis;
@@ -177,7 +175,7 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		File folder = new File("stop-words");
 		
 		// if folder does not exist, notify and return
-		if(folder == null) {
+		if(folder.exists() == false) {
 			System.out.println("\n>>>> BOLT " + id + " - Cound not find stop-words folder," +
 					"\"mvn clean install\"");
 			return;
@@ -227,8 +225,11 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 			// copy of title
 			String copyTitle = new String(title);
 			
+			// get link count for title from redis
+			String linkCountStr = jedis.hget(linkCountPrefix + title, 
+											 "count");
 			// if title not explored
-			if(linkCount.countMinGet(title) == 0) {
+			if(linkCountStr == null) {
 				// add title to redis queue of unexplored titles
 				jedis.rpush(queueId, title);
 				
@@ -244,9 +245,9 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 					token = tokenizer.nextToken();
 					
 					// add reverse index entry to redis if not stop word
-					if(stopWords.containsKey(token)== false) {
+					if(stopWords.containsKey(token) == false) {
 						// add prefix to the token to easily identify in redis
-						jedis.sadd(revIdxPrefix + token, title);
+						jedis.sadd(invIdxPrefix + token, title);
 						
 						numWordsIndexed++;
 						if(numWordsIndexed % 10000 == 0)
@@ -262,7 +263,7 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 			}
 			
 			// increment count for title to reflect new incoming link
-			linkCount.countMinInc(title);
+			jedis.hincrBy(linkCountPrefix + title, "count", 1);
 		}
 		
 		_outputCollector.ack(tuple);
@@ -280,9 +281,6 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		
 		// list that hold all the links in a topic that is being explored
 		titles = Lists.newArrayListWithExpectedSize(2000);
-		
-		// link counter
-		linkCount = new RedisCountMin();
 		
 		// connect to redis to access list of unexplored titles and
 		// reverse index
