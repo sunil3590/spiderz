@@ -12,9 +12,9 @@ socket.on('count', handleCount);
 
 // function to handle search query request
 function handleSearch(e) {
-	var _interestAND = $('#interestAND').val().toLowerCase();
-	var _interestOR = $('#interestOR').val().toLowerCase();
-	var _ignore = $('#ignore').val().toLowerCase();
+	var _interestAND = $('#interestAND').val();
+	var _interestOR = $('#interestOR').val();
+	var _ignore = $('#ignore').val();
 
 	// remove all previous search results
 	var results = $("#results");
