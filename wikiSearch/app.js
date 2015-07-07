@@ -6,22 +6,31 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var io = require('socket.io');
 var http = require('http');
+var ip = require('ip');
 
 var routes = require('./routes/index');
 
-// set up a server and socket.io
+// set up a server
+var addr = ip.address();
+var port = 3000;
 var app = express();
 var server = http.createServer(app);
-server.listen(3000);
+server.listen(port, addr);
+
+// set up socket.io
 var socket = io.listen(server);
-console.log("Server listening to http://127.0.0.1:3000/");
+console.log("Server listening to " + addr + " " + port);
 
 // set up event handlers for client
 socket.on('connection', onConnect);
 
+// get redis server ip
+var redis_port = process.argv[2];
+var redis_ip = process.argv[3];
+
 // create redis client
 var redis = require('redis');
-var redisClient = redis.createClient();
+var redisClient = redis.createClient(redis_port, redis_ip);
 
 // set up event handlers for redis
 redisClient.on('connect', redisOnConnnect);
@@ -149,7 +158,7 @@ function redisOnConnnect() {
 }
 
 function redisOnError() {
-    console.log('error in redis');
+    console.log('Error in redis');
 }
 
 // view engine setup

@@ -34,7 +34,7 @@ import com.google.gson.JsonParser;
 public class WikiCrawlerTopology {
 
 	private static int numWorkers = 1; // how many machines do we have?
-	private static int numCores = 2; // how many cores on each machine
+	private static int numCores = 2; // how many cores on each machine?
 	public static StormTopology buildTopology() {
 		// topology to build
 		TopologyBuilder topology = new TopologyBuilder();
@@ -62,7 +62,7 @@ public class WikiCrawlerTopology {
 		// configure the topology
 		Config conf = new Config();
 		conf.setDebug(false);
-		conf.setNumWorkers(1); // running one a local machine
+		conf.setNumWorkers(numWorkers);
 
 		LocalCluster cluster = new LocalCluster();
 		StormTopology topology = buildTopology();

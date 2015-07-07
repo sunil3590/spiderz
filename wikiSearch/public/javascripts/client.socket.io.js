@@ -1,6 +1,10 @@
-var server_name = "http://127.0.0.1:3000/";
-var socket = io.connect(server_name);
-console.log('Client connected to server ' + server_name);
+var server = location.protocol + "//" + location.hostname + 
+			 ":" + location.port;
+var socket = io.connect(server);
+
+if(socket == null) {
+	alert("Could not connect to " + server);
+}
 
 // set a handler for onclick event of "search" button
 var button = document.getElementById("search");
