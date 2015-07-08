@@ -23,6 +23,20 @@ public class WikiCrawlerSpout implements IRichSpout {
 	// connection to redis
 	Jedis jedis;
 
+	// redis ip and port
+	String redisIp = null;
+	String redisPort = null;
+	
+	// constructor to get redis IP and port
+	public WikiCrawlerSpout(String redisIp, String redisPort) {
+		
+		System.out.println("\n>>>>>>> SPOUT : redis - " + redisIp + ":" + 
+				redisPort + "\n");
+		
+		this.redisIp = redisIp;
+		this.redisPort = redisPort;
+	}
+	
 	@Override
 	public void ack(Object arg0) {
 		// TODO Auto-generated method stub
@@ -88,7 +102,7 @@ public class WikiCrawlerSpout implements IRichSpout {
 
 		// connect to redis to access queue which 
 		// contains unexplored titles
-		jedis = new Jedis("localhost");
+		jedis = new Jedis(this.redisIp, Integer.parseInt(this.redisPort));
 		
 		// set the starting point to crawl if already not set
 		if(jedis.llen(queueId) == 0) {

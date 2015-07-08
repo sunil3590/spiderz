@@ -40,7 +40,7 @@ public class WikiCrawlerTopology {
 		TopologyBuilder topology = new TopologyBuilder();
 
 		// create a spout
-		WikiCrawlerSpout wikiSpout = new WikiCrawlerSpout();
+		WikiCrawlerSpout wikiSpout = new WikiCrawlerSpout(redisIp, redisPort);
 
 		// create a bolt
 		WikiCrawlerExplorerBolt wikiBolt = new WikiCrawlerExplorerBolt(redisIp, redisPort);
