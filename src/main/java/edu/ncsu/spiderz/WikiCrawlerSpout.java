@@ -102,7 +102,7 @@ public class WikiCrawlerSpout implements IRichSpout {
 
 		// connect to redis to access queue which 
 		// contains unexplored titles
-		jedis = new Jedis(this.redisIp, Integer.parseInt(this.redisPort));
+		jedis = new Jedis(this.redisIp, Integer.parseInt(this.redisPort), 2000);
 		
 		// set the starting point to crawl if already not set
 		if(jedis.llen(queueId) == 0) {

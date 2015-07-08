@@ -298,7 +298,7 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		
 		// connect to redis to access list of unexplored titles and
 		// reverse index
-		jedis = new Jedis(this.redisIp, Integer.parseInt(this.redisPort));
+		jedis = new Jedis(this.redisIp, Integer.parseInt(this.redisPort), 2000);
 		
 		// build a stop word list from text files
 		buildStopWordList();
