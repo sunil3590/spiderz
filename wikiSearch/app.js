@@ -25,8 +25,8 @@ console.log("Server listening to " + addr + " " + port);
 socket.on('connection', onConnect);
 
 // get redis server ip
-var redis_port = process.argv[2];
-var redis_ip = process.argv[3];
+var redis_ip = process.argv[2];
+var redis_port = process.argv[3];
 
 // create redis client
 var redis = require('redis');

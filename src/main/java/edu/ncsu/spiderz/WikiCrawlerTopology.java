@@ -35,7 +35,7 @@ public class WikiCrawlerTopology {
 
 	private static int numWorkers = 1; // how many machines do we have?
 	private static int numCores = 2; // how many cores on each machine?
-	public static StormTopology buildTopology() {
+	public static StormTopology buildTopology(String redisIp, String redisPort) {
 		// topology to build
 		TopologyBuilder topology = new TopologyBuilder();
 
@@ -43,7 +43,7 @@ public class WikiCrawlerTopology {
 		WikiCrawlerSpout wikiSpout = new WikiCrawlerSpout();
 
 		// create a bolt
-		WikiCrawlerExplorerBolt wikiBolt = new WikiCrawlerExplorerBolt();
+		WikiCrawlerExplorerBolt wikiBolt = new WikiCrawlerExplorerBolt(redisIp, redisPort);
 
 		// set up the DAG
 		// this spout always takes 1 task, it is light
@@ -59,15 +59,23 @@ public class WikiCrawlerTopology {
 	}
 
 	public static void main(String args[]) throws Exception {
+		
+		// check validity of command line arguments
+		if(args.length != 2) {
+			System.out.println("Command line arguments missing\n");
+			System.out.println("Pass redis IP and port\n");
+			return;
+		}
+		
 		// configure the topology
 		Config conf = new Config();
 		conf.setDebug(false);
 		conf.setNumWorkers(numWorkers);
 
 		LocalCluster cluster = new LocalCluster();
-		StormTopology topology = buildTopology();
+		StormTopology topology = buildTopology(args[0], args[1]);
 		cluster.submitTopology("crawler", conf, topology);
 
-		System.out.println("\n>>>> TOPOLUGY - STATUS OK\n");
+		System.out.println("\n>>>> TOPOLOGY - STATUS OK\n");
 	}
 }

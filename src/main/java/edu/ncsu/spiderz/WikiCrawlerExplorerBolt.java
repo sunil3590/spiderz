@@ -61,6 +61,20 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 	// object ID
 	private int id = 0;
 	
+	// redis ip and port
+	String redisIp = null;
+	String redisPort = null;
+	
+	// constructor to get redis IP and port
+	public WikiCrawlerExplorerBolt(String redisIp, String redisPort) {
+		
+		System.out.println("\n>>>>>>> BOLT " + id + " : redis - " + redisIp + ":" + 
+				redisPort + "\n");
+		
+		this.redisIp = redisIp;
+		this.redisPort = redisPort;
+	}
+	
 	// get JSON from a string
 	private JsonElement getJson(String response) {
 		JsonElement root = null;
@@ -284,7 +298,7 @@ public class WikiCrawlerExplorerBolt implements IRichBolt{
 		
 		// connect to redis to access list of unexplored titles and
 		// reverse index
-		jedis = new Jedis("localhost");
+		jedis = new Jedis(this.redisIp, Integer.parseInt(this.redisPort));
 		
 		// build a stop word list from text files
 		buildStopWordList();
