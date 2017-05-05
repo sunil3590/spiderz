@@ -10,9 +10,9 @@ More details to come soon!
 2. Start redis data store
 sudo redis-server conf/redis.conf
 3. Start storm crawler topology
-storm jar target/spiderz-1.0-SNAPSHOT-jar-with-dependencies.jar edu.ncsu.spiderz.WikiCrawlerTopology ~redis IP~ ~redis port~
+`storm jar target/spiderz-1.0-SNAPSHOT-jar-with-dependencies.jar edu.ncsu.spiderz.WikiCrawlerTopology REDIS_IP REDIS_PORT`
 4. Start node search engine
-nodejs wikiSearch/app.js ~redis IP~ ~redis port~
+`nodejs wikiSearch/app.js REDIS_IP REDIS_PORT`
 
 ### TODO
 1. Use first paragraph to index and search better
